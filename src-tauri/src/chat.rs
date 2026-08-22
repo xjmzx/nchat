@@ -443,4 +443,38 @@ mod tests {
         assert!(!is_allowed(&stranger, &me, &list), "strangers are dropped");
         assert!(!is_allowed(&stranger, &me, &[]), "empty list admits nobody");
     }
+
+    /// Cross-implementation check. The suite's expiry bots wrap with `nak`
+    /// (Go); nchat unwraps with rust-nostr. If those two ever disagree the
+    /// alerts silently stop arriving, so pin a real nak-produced wrap here.
+    ///
+    /// Fixture generated 2026-08-23 with nak v0.20.0 using throwaway keys —
+    /// it was never published to any relay.
+    #[test]
+    fn unwraps_a_gift_wrap_produced_by_nak() {
+        const NAK_WRAP: &str = r#"{"kind":1059,"id":"286d0ee51bfb89ce935a66a8a5358d2e87639ac707d195c5ef9fd1dd6eda18ec","pubkey":"a723b717fc7622a120f72931bfc748fe26906849658d71aad05a9395f231fd80","created_at":1787324239,"tags":[["p","4fd366e9222ef4b7b6a46eb118b8ba92b5413b862b48b1325f8a5a00f202e919"]],"content":"AoeYhcy8ffeq3S6FeAWz6GvL6fzUFIib/rK/jkervWqkvN9o8Lm+Ybt7UatzdfJbDgZ8wS/zKB6FAyW4GEIM6TPdOyMdhnooHArush6w8XE/yyLNcn3+rsXSW0MANm6rao3eb9pzzVqAoIOYVOqeLZC0KZvX/GhnH6tcm3Hpv8nch8nkxsIsxczRlgJqzT0adTXyMZcWOwQbJsfD7zdtZXK06tzLilzbcqZG63jIIeALFt0NvX/pU8CBz3KwsAU2NS8KuedIQ3FS0apMFVCqPDITbUKv7/HKyQSrgh+NMJBPF+FSQRPtM3bvYl5wjpFhQLg9aM+r3l947KcWdYU/h1MkdFMA6jlwxS7DbTfElCrsPLcVA3tqO18o7UkIbYXWr18QufuuosCqQBisDZN0mgK7l+Df/tye13AEFXQFdJaTu4BPGF6aJvvfdzEEMy/A5h8mm8owcojSDl5u3R3Ee17j80cVZ2Qed7iXmyYk/HxeGCl6Zj/pu4Lp7pcHs03z/VGNXHKAfuOHftZneeB84AylMeIiLveFIK5GJZsWYl6s4sZJgPOiMHo2a+OAhwXvgjzGBZBfxEUpe/ZB4N8tVEo9Levso3TJR9YrzC9t6/DBwK1MUplaQAnduii229VMw26Ou4VaG/nJpVtWC6Va4UbWpCMbysLDUz4QX005rd3fLHGE57NptN9AH8jzZLNrU3R0T/WadmtbMQ4/0VnrmGrX5Q+i48Kv5HeAq+TueWDbhKKIfj5O+W24W+eUQNksLVWHVnfKW36ll7fNCmH1sBW7iYzoK5xHQkQ73zcVNzmSLi4tBDagx+7RVzpYbZoM2vHiG/zHB9Snx60nFRscwZooyFathvLMTCIddKnwzMv50b+pAImH7V8Abrg9cyjjcj5yFGi7D9KTncPbyZ35o1H3SCa+dqRiHP1mbY0x3LfUSgtak/IQoME4mHdADBEamCZ+cXu7iU5TIJ5AnO/vaCzNzEpuY8IIGz7XzwFU++O7s/+qpSVSrI7tgYPfyBWLpQ57XPAZ2IPd0/tnk39EBJ3ZFZdYIshfRipXRv2NPaWs/DOrwQ+59sjZFb1ed9apUo3H7EuUpLAen7dNasLudvrcJ4A04lWpdXKwWIGx+rc5xEpD56LzVq9rny9Q8FoexntkYXfwdtL0c37BBafYrTW3yyP9PaOKpNzo3iHrT+R/J6WMWacRlH1YoMraP1hgAnf5Uv7VDkecg2PUsSqrqI+VmRMjFO4Cf9trAgFQjOE+U7FD4fGAT+ZRYzQSGQ+Ta9R6sBr+Q8zAZTpGwX5AmVL4++MNu14tlyiRX+moSQl+rhc4lDYFCihfxqEs/2zLjPve/gimQa0ol17Cp0VmVofQm7MApQkItYJhTm45ZUn7ohqrJSpmT9wPp3Ldde3R3e5c78EXNbce+gk+v8Yo/idqTYxguolc2C9O9ZDudyUN/hHE4rdAVOFmThqCfZkEbcfZs2F0qtCr9CbroxMNs75PeghYZTA+thlzLa+6D03OMZAT6ODRBvqgeSxuXEM761FU8L92ydB+NXuuc7vuww5R72IvEZM1/FitJ6bLUIoxkiXPCWvPJBMESGdILq3ZpW8SBqZrKN5DK9+flWPMX12hpsE6Bi7D0TXRJbdiDGXQLvTSWUBK8GEgFFLcyYVx43vPyBG8/sahAdHEBRYkx4tNW59bm9wNyu9+3tWCJOajdT4NzMzvWMHxEaO27kckWvby5OjdZuslhsJ1wzvimHzlpzHdbxzOuVD1OqDqVYi02XURW2d2pRsa+GFSchPhaUY1","sig":"aae4ca03c9ce43565b8b865b51a8e65ea7ed619c12cbd0f9561fa6d158cbe7795d8e38c06a53f8325fc89acb1057d82900141bcb533dad3facde11f3e64cfc4c"}"#;
+        const RECIPIENT_SEC: &str =
+            "d980224ef82b4c0830873895f8bf66abed2275d45ce8fb3ca68b82dd1657fdf4";
+        const SENDER_PUB: &str =
+            "6587609afb05a15e55e880d1e59c04d2a741069a4a6fc8bf0ffce86ffff17a16";
+
+        let wrap: Event = serde_json::from_str(NAK_WRAP).expect("fixture parses");
+        let recipient = Keys::parse(RECIPIENT_SEC).expect("fixture key");
+
+        let opened = UnwrappedGift::from_gift_wrap(&recipient, &wrap)
+            .expect("rust-nostr must open a nak-produced wrap");
+
+        assert_eq!(
+            opened.sender.to_hex(),
+            SENDER_PUB,
+            "the seal names the real sender, not the ephemeral wrap key"
+        );
+        assert_ne!(wrap.pubkey.to_hex(), SENDER_PUB, "wrap key is ephemeral");
+        assert!(
+            opened.rumor.content.contains("registration expires in 7d"),
+            "recovered body: {}",
+            opened.rumor.content
+        );
+        assert_eq!(opened.rumor.kind, Kind::PrivateDirectMessage);
+    }
 }
