@@ -81,7 +81,14 @@ make icons    # regenerate the bundle icon set from icon.svg
 make build    # release binary
 make install  # install binary + .desktop under ~/.local
 make check    # typecheck + cargo check
+make test     # gift-wrap round trip + whitelist rules
 ```
+
+`make test` runs entirely offline — it builds real wraps and opens them with
+real keys, asserting that the recipient recovers the true sender, that the
+wrap is signed by a throwaway key rather than the sender, that a third party
+cannot open it at all, and that the self-copy stays readable. No relay is
+touched and nothing is published.
 
 On Linux, the credential store needs a Secret Service provider (gnome-keyring
 or similar) running; nchat surfaces a banner when it cannot reach one.

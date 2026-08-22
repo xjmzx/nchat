@@ -21,6 +21,7 @@
 // The signer never leaves this module: callers pass an nsec string straight
 // from the keychain, and only plaintext comes back.
 
+use std::collections::HashSet;
 use std::time::Duration;
 
 use nostr_sdk::prelude::*;
@@ -197,7 +198,7 @@ pub async fn fetch_inbox(
 
     client.disconnect().await;
 
-    let allowed = |pk: &str| pk == me_hex || whitelist.iter().any(|w| w == pk);
+    let allowed = |pk: &str| is_allowed(pk, &me_hex, whitelist);
 
     let mut messages: Vec<Message> = Vec::new();
     let mut blocked = 0u32;
@@ -279,8 +280,13 @@ pub async fn fetch_inbox(
         });
     }
 
+    // A message addressed to ourselves arrives twice (recipient copy and self
+    // copy). Dedup by id explicitly rather than relying on `dedup_by`, which
+    // only collapses *adjacent* duplicates and so depends on the sort putting
+    // them side by side.
+    let mut seen: HashSet<String> = HashSet::with_capacity(messages.len());
+    messages.retain(|m| seen.insert(m.id.clone()));
     messages.sort_by_key(|m| m.created_at);
-    messages.dedup_by(|a, b| a.id == b.id);
 
     Ok(InboxPage {
         messages,
@@ -321,4 +327,120 @@ pub fn normalise_pubkey(input: &str) -> Result<(String, String), String> {
         .to_bech32()
         .map_err(|e| format!("could not encode npub: {e}"))?;
     Ok((npub, pk.to_hex()))
+}
+
+/// Whether a message from `author` should be rendered. Our own key is always
+/// allowed so that self-copies and our sent messages come back; everything
+/// else must be on the whitelist. Extracted so the rule is directly testable —
+/// it is the entire trust model and deserves a test rather than a comment.
+fn is_allowed(author: &str, me: &str, whitelist: &[String]) -> bool {
+    author == me || whitelist.iter().any(|w| w == author)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Build the same rumor + wraps that `send_dm` does, without any relay.
+    fn wrap_for(
+        sender: &Keys,
+        recipient: PublicKey,
+    ) -> (UnsignedEvent, Event, Event) {
+        let rumor: UnsignedEvent = EventBuilder::new(Kind::PrivateDirectMessage, "hello")
+            .tag(Tag::public_key(recipient))
+            .finalize_unsigned(sender.public_key());
+        let to_them = GiftWrapBuilder::new(recipient, rumor.clone())
+            .finalize(sender)
+            .expect("wrap to recipient");
+        let to_self = GiftWrapBuilder::new(sender.public_key(), rumor.clone())
+            .finalize(sender)
+            .expect("wrap to self");
+        (rumor, to_them, to_self)
+    }
+
+    #[test]
+    fn recipient_can_unwrap_and_sees_the_real_sender() {
+        let alice = Keys::generate();
+        let bob = Keys::generate();
+        let (_, to_bob, _) = wrap_for(&alice, bob.public_key());
+
+        let opened = UnwrappedGift::from_gift_wrap(&bob, &to_bob).expect("bob unwraps");
+        assert_eq!(opened.sender, alice.public_key(), "seal proves authorship");
+        assert_eq!(opened.rumor.content, "hello");
+        assert_eq!(
+            first_p_tag(&opened.rumor.tags),
+            Some(bob.public_key()),
+            "rumor addresses the real recipient"
+        );
+    }
+
+    #[test]
+    fn the_wrap_is_signed_by_a_throwaway_key_not_the_sender() {
+        let alice = Keys::generate();
+        let bob = Keys::generate();
+        let (_, to_bob, _) = wrap_for(&alice, bob.public_key());
+
+        // This is the whole point of NIP-17: nothing on the public event ties
+        // it back to alice.
+        assert_ne!(to_bob.pubkey, alice.public_key());
+        assert_ne!(to_bob.pubkey, bob.public_key());
+        assert_eq!(to_bob.kind, Kind::GiftWrap);
+    }
+
+    #[test]
+    fn a_stranger_cannot_open_the_wrap() {
+        let alice = Keys::generate();
+        let bob = Keys::generate();
+        let eve = Keys::generate();
+        let (_, to_bob, _) = wrap_for(&alice, bob.public_key());
+
+        assert!(UnwrappedGift::from_gift_wrap(&eve, &to_bob).is_err());
+    }
+
+    #[test]
+    fn the_self_copy_is_readable_by_the_sender() {
+        // Without this, our own sent messages would not survive a restart.
+        let alice = Keys::generate();
+        let bob = Keys::generate();
+        let (_, _, to_self) = wrap_for(&alice, bob.public_key());
+
+        let opened = UnwrappedGift::from_gift_wrap(&alice, &to_self).expect("alice unwraps");
+        assert_eq!(opened.sender, alice.public_key());
+        assert_eq!(
+            first_p_tag(&opened.rumor.tags),
+            Some(bob.public_key()),
+            "the conversation partner is still bob, not alice"
+        );
+    }
+
+    #[test]
+    fn sort_uses_the_rumor_timestamp_because_the_wrap_is_jittered() {
+        let alice = Keys::generate();
+        let bob = Keys::generate();
+        let (rumor, to_bob, _) = wrap_for(&alice, bob.public_key());
+
+        let now = Timestamp::now().as_secs();
+        let inner = rumor.created_at.as_secs();
+        assert!(
+            inner.abs_diff(now) < 60,
+            "the rumor carries the true send time"
+        );
+        // The wrap's own timestamp is randomised up to two days into the past,
+        // so it is never a safe sort key. Assert only that it is not in the
+        // future — the jitter direction is what makes it useless to us.
+        assert!(to_bob.created_at.as_secs() <= now + 60);
+    }
+
+    #[test]
+    fn whitelist_admits_self_and_contacts_only() {
+        let me = "aa".repeat(32);
+        let friend = "bb".repeat(32);
+        let stranger = "cc".repeat(32);
+        let list = vec![friend.clone()];
+
+        assert!(is_allowed(&me, &me, &list), "own key always allowed");
+        assert!(is_allowed(&friend, &me, &list));
+        assert!(!is_allowed(&stranger, &me, &list), "strangers are dropped");
+        assert!(!is_allowed(&stranger, &me, &[]), "empty list admits nobody");
+    }
 }

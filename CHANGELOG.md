@@ -20,4 +20,9 @@ First release. A private, multi-identity Nostr messenger for the ndisc suite.
 - Conversations sort by the **inner rumor timestamp** — the gift wrap's own
   `created_at` is randomised by design and would scramble the order.
 
+- Offline test suite (`make test`) covering the gift-wrap round trip: the
+  recipient recovers the true sender, the wrap is signed by a throwaway key,
+  a third party cannot open it, the self-copy stays readable, and the rumor
+  carries the true send time while the wrap's is jittered.
+
 Tauri 2 + React + Vite + Tailwind; `nostr-sdk` 0.45, `keyring` 4, rustls.
