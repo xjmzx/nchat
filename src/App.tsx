@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import {
   MessagesSquare,
   RefreshCw,
@@ -35,6 +36,14 @@ import { Conversation } from "./components/Conversation";
 import { IdentityPicker } from "./components/IdentityPicker";
 import { RelayPanel } from "./components/RelayPanel";
 
+// Suite rule (n-suite headers): the version chip shows only
+// major.minor.patch; any pre-release/build suffix (…-beta.1, +build) drops
+// to the tooltip so the chip keeps a fixed, consistent width as releases
+// move from 0.1.0-beta.1 toward 1.3.1.
+function shortVersion(v: string): string {
+  return v.split(/[-+]/)[0];
+}
+
 export default function App() {
   const [state, setState] = useState<AppState | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -43,6 +52,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(0);
   const [upleb, setUpleb] = useState(false);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
 
   // Ids seen by the previous sync, so a background poll can tell an actually
@@ -74,6 +84,11 @@ export default function App() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Resolve app version once.
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => setAppVersion(null));
+  }, []);
 
   const activeId = state?.activeIdentity ?? null;
 
@@ -213,6 +228,16 @@ export default function App() {
           <span className="text-accent">n</span>
           <span className="text-mauve">chat</span>
         </button>
+        {appVersion && (
+          <span
+            className="hidden md:inline-flex items-center px-2.5 py-2
+                       rounded-md bg-surface text-mauve font-mono text-xs
+                       shrink-0"
+            title={`v${appVersion}`}
+          >
+            v{shortVersion(appVersion)}
+          </span>
+        )}
         <span className="text-xs text-muted hidden sm:inline">
           Private Nostr messaging
         </span>
