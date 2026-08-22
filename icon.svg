@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#0d1117"/>
+  <!-- back plane: the sealed message -->
+  <path d="M120 150h200a40 40 0 0 1 40 40v104a40 40 0 0 1-40 40H214l-62 46v-46h-32a40 40 0 0 1-40-40V190a40 40 0 0 1 40-40z"
+        fill="#a78bfa" opacity="0.55"/>
+  <!-- front plane: the wrap that carries it -->
+  <path d="M192 214h200a40 40 0 0 1 40 40v104a40 40 0 0 1-40 40h-32v46l-62-46H192a40 40 0 0 1-40-40V254a40 40 0 0 1 40-40z"
+        fill="#7af0cd"/>
+  <!-- three dots: a message in flight -->
+  <g fill="#0d1117">
+    <circle cx="240" cy="306" r="16"/>
+    <circle cx="292" cy="306" r="16"/>
+    <circle cx="344" cy="306" r="16"/>
+  </g>
+</svg>

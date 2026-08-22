@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=nchat
+GenericName=Nostr Messenger
+Comment=Private multi-identity Nostr messaging over NIP-17 gift wrap (ndisc suite)
+Exec=@BINDIR@/nchat
+Icon=@ICONDIR@/nchat.svg
+Terminal=false
+Categories=Network;InstantMessaging;
+Keywords=nostr;chat;message;dm;nip17;giftwrap;ndisc;
+StartupNotify=true
