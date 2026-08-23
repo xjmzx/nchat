@@ -13,8 +13,9 @@ help:
 	@echo "  make deps       npm install + cargo fetch (one-time setup)"
 	@echo "  make dev        run 'tauri dev' (hot-reload)"
 	@echo "  make build      release build of frontend + Rust binary"
-	@echo "  make install    copy binary + desktop entry under PREFIX"
+	@echo "  make install    copy binary + desktop entry under PREFIX  [Linux]"
 	@echo "                  (default PREFIX=\$$HOME/.local; sudo PREFIX=/usr/local for system-wide)"
+	@echo "  ./install.sh    build a .app and install it to /Applications  [macOS]"
 	@echo "  make uninstall  remove what 'install' put down"
 	@echo "  make check      typecheck + cargo check (no build)"
 	@echo "  make test       cargo test (gift-wrap round trip + whitelist rules)"
@@ -51,7 +52,17 @@ check:
 test:
 	cd src-tauri && cargo test --lib
 
+# Linux layout: a bare binary plus a .desktop entry. On macOS this would put an
+# unbundled binary in ~/.local/bin — no Info.plist, no icon, and no bundle
+# identifier, which the Keychain uses to decide who may read an entry. Since
+# every secret this app holds lives in that store, a bundle-less install is not
+# a lesser install, it is a different app to the OS. Use ./install.sh there.
 install: $(TAURI_BIN)
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		echo "'make install' is the Linux layout (bare binary + .desktop)."; \
+		echo "On macOS run ./install.sh — it builds a .app and installs it to /Applications."; \
+		exit 1; \
+	fi
 	install -d $(BINDIR) $(APPDIR) $(ICONDIR)
 	install -m 0755 $(TAURI_BIN) $(BINDIR)/nchat
 	install -m 0644 icon.svg $(ICONDIR)/nchat.svg

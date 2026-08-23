@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **macOS install path.** `./install.sh` (or `npm run install:app`) builds the
+  `.app` bundle and installs it to `/Applications`, quitting and relaunching a
+  running copy. `make install` is the Linux layout — a bare binary plus a
+  `.desktop` entry, matching `make build`'s `--no-bundle` — and now refuses on
+  macOS with a pointer rather than installing something subtly wrong. The
+  difference is not cosmetic: an unbundled binary has no bundle identifier, and
+  the Keychain decides who may read an entry by code identity.
+
 ## v0.1.0-beta.1
 
 First release. A private, multi-identity Nostr messenger for the ndisc suite.
