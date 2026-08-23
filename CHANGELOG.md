@@ -9,6 +9,14 @@
   macOS with a pointer rather than installing something subtly wrong. The
   difference is not cosmetic: an unbundled binary has no bundle identifier, and
   the Keychain decides who may read an entry by code identity.
+- **Keychain commands no longer block the UI.** `add_identity` and
+  `remove_identity` are `async`, so they run on the async runtime rather than
+  the main thread. A Tauri command that is not `async` runs on the thread
+  driving the webview, and the credential store may put a modal in front of any
+  call to it — on macOS, routinely, because an unsigned app is re-signed on each
+  rebuild and is no longer the caller the entry's ACL trusts. Blocked there, the
+  dialog takes the whole UI down with it. The reads (`fetch_inbox`,
+  `send_message`) were already async and are unchanged.
 
 ## v0.1.0-beta.1
 

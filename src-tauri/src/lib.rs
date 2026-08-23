@@ -62,8 +62,17 @@ fn load_state(app: AppHandle) -> Result<AppState, String> {
 
 /// Add an identity. With `nsec` empty a fresh keypair is generated; the secret
 /// goes straight to the keychain and is never returned to the caller.
+///
+/// `async` for the same reason `remove_identity` is: a Tauri command that is not
+/// async runs on the MAIN thread, which is the thread driving the webview, and
+/// the OS credential store is entitled to put a modal in front of any call to
+/// it. Blocking there freezes the whole UI behind a dialog. This one is the
+/// milder case — the keychain handle is a fresh random id per identity, so `put`
+/// creates rather than overwrites and should not prompt today — but the contract
+/// on `secrets::put` is "overwrites any existing entry", and the day that
+/// handle becomes deterministic is not the day to rediscover this.
 #[tauri::command]
-fn add_identity(app: AppHandle, label: String, nsec: String) -> Result<Identity, String> {
+async fn add_identity(app: AppHandle, label: String, nsec: String) -> Result<Identity, String> {
     let label = label.trim().to_string();
     if label.is_empty() {
         return Err("give the identity a label".into());
@@ -100,8 +109,13 @@ fn add_identity(app: AppHandle, label: String, nsec: String) -> Result<Identity,
     Ok(identity)
 }
 
+/// Remove an identity, config first then key. `async` because deleting an
+/// existing credential is an ACL-checked operation, and macOS answers those with
+/// a modal whenever the caller is not the binary that created the entry —
+/// routine for an unsigned app, which is re-signed on every rebuild. On the main
+/// thread that dialog takes the webview down with it.
 #[tauri::command]
-fn remove_identity(app: AppHandle, id: String) -> Result<(), String> {
+async fn remove_identity(app: AppHandle, id: String) -> Result<(), String> {
     let mut cfg = read_config(&app)?;
     cfg.identities.retain(|i| i.id != id);
     if cfg.active_identity.as_deref() == Some(id.as_str()) {
