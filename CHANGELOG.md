@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Message tones work on Linux.** Two WebKitGTK behaviours were silencing
+  them, both invisible on macOS. User activation there is *transient*, so a
+  `play()` after a relay round trip or on the sync timer is refused outright;
+  each tone element is now unlocked inside the first real click. And element
+  volume is pinned near 0.1 and overwrites what the page sets, so a level baked
+  into the samples landed ~20dB quieter than on macOS; samples are now baked
+  close to full scale with the level applied at the element. A failed tone no
+  longer discards its reason, which is what made this undiagnosable.
+- **Dev builds no longer share state with the installed app.** `tauri dev` uses
+  `nchat.dev.json` and the keyring service `uk.fizx.nchat-dev`, matching the
+  suite convention. This is not housekeeping: removing an identity deletes the
+  only copy of its key, and no IPC command can export one, so a dev run
+  reaching installed state was unrecoverable rather than untidy.
+
 - **Messages arrive without pressing Sync.** The inbox is fetched once as soon
   as an identity is available, and then on a timer — 30s / 1m / 5m, or manual
   only, cycled from the header and remembered. A background tick will not stack

@@ -68,8 +68,17 @@ impl Default for Config {
     }
 }
 
+/// Debug builds keep their own config beside the release one, so a dev run
+/// never clobbers the installed app's identities, whitelist or relay set.
+/// Pairs with the keychain split in secrets.rs — a dev config pointing at
+/// release keys, or the reverse, would be worse than either alone.
 fn config_path(dir: &Path) -> PathBuf {
-    dir.join("nchat.json")
+    let name = if cfg!(debug_assertions) {
+        "nchat.dev.json"
+    } else {
+        "nchat.json"
+    };
+    dir.join(name)
 }
 
 /// Read the config, falling back to defaults when absent. A malformed file is
@@ -91,4 +100,20 @@ pub fn save(dir: &Path, cfg: &Config) -> Result<(), String> {
     let body = serde_json::to_string_pretty(cfg)
         .map_err(|e| format!("could not serialise config: {e}"))?;
     fs::write(&path, body).map_err(|e| format!("could not write {}: {e}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Guards the other half of the dev/install split. Tests compile with
+    /// debug assertions on, so this is the dev name by construction — the
+    /// point is that deleting the split fails a test rather than silently
+    /// pointing development at the installed app's identities.
+    #[test]
+    fn debug_builds_use_a_separate_config_file() {
+        let p = config_path(Path::new("/tmp"));
+        assert_eq!(p.file_name().unwrap(), "nchat.dev.json");
+        assert_ne!(p.file_name().unwrap(), "nchat.json");
+    }
 }

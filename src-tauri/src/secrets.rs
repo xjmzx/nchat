@@ -12,10 +12,25 @@
 
 use keyring::{Entry, Error as KeyringError};
 
-const SERVICE: &str = "uk.fizx.nchat";
+const SERVICE_RELEASE: &str = "uk.fizx.nchat";
+const SERVICE_DEV: &str = "uk.fizx.nchat-dev";
+
+/// Debug builds (`tauri dev`) use a separate keychain service, so development
+/// holds its own identities and never reads, overwrites or deletes the
+/// installed app's nsec. That matters more here than elsewhere in the suite:
+/// `remove_identity` deletes the only copy of a key, and no IPC command can
+/// export one, so a dev run touching release state is unrecoverable rather
+/// than merely inconvenient. Matches ndisc / ntree / nsmpl.
+fn service() -> &'static str {
+    if cfg!(debug_assertions) {
+        SERVICE_DEV
+    } else {
+        SERVICE_RELEASE
+    }
+}
 
 fn entry(identity_id: &str) -> Result<Entry, String> {
-    Entry::new(SERVICE, identity_id).map_err(|e| match e {
+    Entry::new(service(), identity_id).map_err(|e| match e {
         KeyringError::NoDefaultStore => {
             "no OS credential store available (on Linux, is a Secret Service \
              provider such as gnome-keyring running?)"
@@ -60,5 +75,19 @@ pub fn store_available() -> Result<(), String> {
     match Entry::store_status() {
         Ok(()) => Ok(()),
         Err(e) => Err(format!("{e}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The split is the only thing standing between a dev run and the
+    /// installed app's keys, and it is invisible in a release build — so
+    /// assert it rather than trust it. Tests compile with debug assertions on.
+    #[test]
+    fn debug_builds_use_a_separate_keychain_service() {
+        assert_eq!(service(), SERVICE_DEV);
+        assert_ne!(service(), SERVICE_RELEASE);
     }
 }
