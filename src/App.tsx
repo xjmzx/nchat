@@ -104,11 +104,24 @@ export default function App() {
   // activation from the click is long gone and play() is refused outright.
   // Doing it here, synchronously inside the event, is the whole trick: it must
   // not sit behind an await.
+  //
+  // The listeners stay attached until an unlock actually succeeds. Dropping
+  // them on the first attempt would make a failed unlock permanent for the
+  // session, and its symptom — silence, no error — is the same one the three
+  // platform bugs produce, so it would be misread as a regression in them.
   useEffect(() => {
+    let unlocked = false;
+    let attempting = false;
     const bless = () => {
-      unlockTones();
-      window.removeEventListener("pointerdown", bless);
-      window.removeEventListener("keydown", bless);
+      if (unlocked || attempting) return;
+      attempting = true;
+      void unlockTones().then((ok) => {
+        attempting = false;
+        if (!ok) return; // Leave the listeners up for the next gesture.
+        unlocked = true;
+        window.removeEventListener("pointerdown", bless);
+        window.removeEventListener("keydown", bless);
+      });
     };
     window.addEventListener("pointerdown", bless);
     window.addEventListener("keydown", bless);

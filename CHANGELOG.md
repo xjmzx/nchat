@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A failed tone unlock is no longer permanent.** The gesture listeners now
+  stay attached until an unlock actually succeeds, instead of being dropped on
+  the first attempt whether or not it worked. `unlockTones()` reports whether
+  both elements were blessed. The failure this closes is worth naming: a
+  silently failed unlock lasts the life of the page and its symptom is total
+  silence with no error — identical to the three platform bugs behind it, and
+  so almost certain to be misread as one of them coming back.
+
 - **Message tones work on Linux.** Two WebKitGTK behaviours were silencing
   them, both invisible on macOS. User activation there is *transient*, so a
   `play()` after a relay round trip or on the sync timer is refused outright;

@@ -156,19 +156,29 @@ const sentEl: { el: HTMLAudioElement | null } = { el: null };
 /** Bless both tone elements inside a user gesture so later, gesture-less
  *  plays are allowed. Safe to call more than once; harmless where the platform
  *  does not require it. MUST be called synchronously from a real user event —
- *  an await beforehand loses the activation and defeats the whole point. */
-export function unlockTones(): void {
-  for (const el of [receive(), sent()]) {
-    void el
+ *  an await beforehand loses the activation and defeats the whole point.
+ *
+ *  Resolves true only if BOTH elements were actually blessed, so the caller
+ *  can keep listening for another gesture instead of assuming it worked. A
+ *  silently failed unlock is unrecoverable for the life of the page and its
+ *  symptom is total silence — indistinguishable from the three platform bugs
+ *  above, and the reason those took as long as they did to find.
+ *
+ *  Note this stays synchronous up to the play() calls: the .map runs in the
+ *  same tick as the gesture, and only the await of the collected promises
+ *  happens later. Hoisting an await above it would lose the activation. */
+export async function unlockTones(): Promise<boolean> {
+  const blessed = [receive(), sent()].map((el) =>
+    el
       .play()
       .then(() => {
         el.pause();
         el.currentTime = 0;
+        return true;
       })
-      .catch(() => {
-        /* Nothing to do: the tone simply stays blocked, as it was before. */
-      });
-  }
+      .catch(() => false),
+  );
+  return (await Promise.all(blessed)).every(Boolean);
 }
 
 /** A new message arrived: two rising tones, the more attention-seeking pair. */
