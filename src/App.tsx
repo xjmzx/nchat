@@ -30,7 +30,7 @@ import {
   SYNC_INTERVALS,
   type Prefs,
 } from "./lib/prefs";
-import { playReceive, playSent } from "./lib/sound";
+import { onToneFailure, playReceive, playSent, unlockTones } from "./lib/sound";
 import { ContactList } from "./components/ContactList";
 import { Conversation } from "./components/Conversation";
 import { IdentityPicker } from "./components/IdentityPicker";
@@ -53,6 +53,9 @@ export default function App() {
   const [blocked, setBlocked] = useState(0);
   const [upleb, setUpleb] = useState(false);
   const [appVersion, setAppVersion] = useState<string | null>(null);
+  // Diagnostic: what the tone element actually did, since a silent tone is
+  // otherwise invisible from outside the webview.
+  const [toneNote, setToneNote] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
 
   // Ids seen by the previous sync, so a background poll can tell an actually
@@ -88,6 +91,31 @@ export default function App() {
   // Resolve app version once.
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => setAppVersion(null));
+  }, []);
+
+  useEffect(() => {
+    onToneFailure(setToneNote);
+    return () => onToneFailure(null);
+  }, []);
+
+  // Bless the tone elements on the first real interaction. WebKitGTK only
+  // grants transient user activation, so by the time a send tone fires — after
+  // a relay round trip — or a receive tone fires from the sync timer, the
+  // activation from the click is long gone and play() is refused outright.
+  // Doing it here, synchronously inside the event, is the whole trick: it must
+  // not sit behind an await.
+  useEffect(() => {
+    const bless = () => {
+      unlockTones();
+      window.removeEventListener("pointerdown", bless);
+      window.removeEventListener("keydown", bless);
+    };
+    window.addEventListener("pointerdown", bless);
+    window.addEventListener("keydown", bless);
+    return () => {
+      window.removeEventListener("pointerdown", bless);
+      window.removeEventListener("keydown", bless);
+    };
   }, []);
 
   const activeId = state?.activeIdentity ?? null;
@@ -346,6 +374,11 @@ export default function App() {
         {blocked > 0 && (
           <span className="text-warn" title="From keys not on the whitelist — counted, never rendered">
             {blocked} blocked
+          </span>
+        )}
+        {toneNote && (
+          <span className="font-mono truncate max-w-[52%]" title={toneNote}>
+            tone: {toneNote}
           </span>
         )}
         <span className="ml-auto opacity-60">ndisc suite</span>

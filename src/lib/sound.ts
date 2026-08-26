@@ -15,6 +15,18 @@
 //
 // The element is created once per tone and reused. Creating a fresh Audio()
 // per play is the other thing WebKit2GTK dislikes (see ntree's clip preview).
+//
+// There is a SECOND Linux wall behind the Web Audio one, and it is the reason
+// tones were silent here long after the switch to HTMLMediaElement: WebKitGTK
+// grants only *transient* user activation. A play() more than a few seconds
+// after the last click is refused with NotAllowedError — which is every tone
+// this app has, since the send tone waits on a relay round trip and the
+// receive tone fires from a sync timer. macOS does not enforce this, so the
+// bug is invisible there. `unlockTones()` below is the standard answer: start
+// and immediately stop each element inside a real gesture, after which that
+// element may be played programmatically for the life of the page. Measured
+// on WebKit2GTK 4.1: an unlocked element resolves after a 10s idle while an
+// identical un-unlocked one rejects.
 
 const SAMPLE_RATE = 44100;
 
@@ -23,9 +35,19 @@ interface Tone {
   /** Offset from the start of the clip. */
   startMs: number;
   ms: number;
-  /** 0..1. Baked into the samples, so element volume stays at 1. */
+  /** 0..1, the INTENDED loudness. Not baked in at this level — see player(). */
   peak: number;
 }
+
+/** Samples are baked close to full scale and the intended level is applied at
+ *  the element instead. That is not a stylistic choice either: WebKitGTK pins
+ *  media-element volume at roughly 0.1 and overwrites whatever the page sets,
+ *  while macOS leaves it at 1. Baking the intended level into the samples
+ *  therefore lands ~20dB quieter on Linux than on macOS — measured here as
+ *  completely inaudible while macOS was fine. Baking loud and asking for a
+ *  quiet element gives macOS exactly the level it always had, and lets the
+ *  Linux override work in our favour rather than against us. */
+const FULL_SCALE = 0.92;
 
 /** Sum the tones into one mono buffer. */
 function render(tones: Tone[]): Float32Array {
@@ -83,37 +105,89 @@ function wav(samples: Float32Array): Blob {
 /** Built on first play and kept for the life of the window. */
 function player(cache: { el: HTMLAudioElement | null }, tones: Tone[]): HTMLAudioElement {
   if (!cache.el) {
-    cache.el = new Audio(URL.createObjectURL(wav(render(tones))));
+    const samples = render(tones);
+    // Normalise to near full scale, then hand the level the tones actually
+    // asked for to the element. Relative shape is untouched.
+    let loudest = 0;
+    for (const s of samples) loudest = Math.max(loudest, Math.abs(s));
+    if (loudest > 0) {
+      const lift = FULL_SCALE / loudest;
+      for (let i = 0; i < samples.length; i++) samples[i] *= lift;
+    }
+    cache.el = new Audio(URL.createObjectURL(wav(samples)));
     cache.el.preload = "auto";
+    cache.el.volume = Math.min(1, loudest);
   }
   return cache.el;
+}
+
+/** Told why a tone did not play, when anyone is listening. */
+let report: ((why: string) => void) | null = null;
+
+/** Register a sink for tone failures. A missed notification is not worth an
+ *  error dialog, but discarding the reason outright makes a silent tone
+ *  undiagnosable from outside the webview — which is exactly how the Linux
+ *  case stayed hidden. */
+export function onToneFailure(fn: ((why: string) => void) | null): void {
+  report = fn;
 }
 
 function play(el: HTMLAudioElement): void {
   try {
     el.currentTime = 0;
-    // Autoplay policy can reject this outright. A missed notification tone is
-    // never worth surfacing as an error.
-    void el.play().catch(() => {});
-  } catch {
-    /* No audio device, or the element is in a state that refuses seeking. */
+    // Autoplay policy can reject this outright, and on WebKit2GTK a resolved
+    // promise still does not guarantee audible output — so record both the
+    // rejection and what the element thought it was doing.
+    void el
+      .play()
+      .catch((e: unknown) => {
+        const err = e as { name?: string; message?: string };
+        report?.(`play() rejected: ${err.name ?? "Error"} — ${err.message ?? ""}`);
+      });
+  } catch (e) {
+    const err = e as { name?: string; message?: string };
+    report?.(`currentTime seek threw: ${err.name ?? "Error"} — play() never called`);
   }
 }
 
 const receiveEl: { el: HTMLAudioElement | null } = { el: null };
 const sentEl: { el: HTMLAudioElement | null } = { el: null };
 
+/** Bless both tone elements inside a user gesture so later, gesture-less
+ *  plays are allowed. Safe to call more than once; harmless where the platform
+ *  does not require it. MUST be called synchronously from a real user event —
+ *  an await beforehand loses the activation and defeats the whole point. */
+export function unlockTones(): void {
+  for (const el of [receive(), sent()]) {
+    void el
+      .play()
+      .then(() => {
+        el.pause();
+        el.currentTime = 0;
+      })
+      .catch(() => {
+        /* Nothing to do: the tone simply stays blocked, as it was before. */
+      });
+  }
+}
+
 /** A new message arrived: two rising tones, the more attention-seeking pair. */
+function receive(): HTMLAudioElement {
+  return player(receiveEl, [
+    { freq: 660, startMs: 0, ms: 90, peak: 0.25 },
+    { freq: 880, startMs: 85, ms: 120, peak: 0.25 },
+  ]);
+}
+
 export function playReceive(): void {
-  play(
-    player(receiveEl, [
-      { freq: 660, startMs: 0, ms: 90, peak: 0.25 },
-      { freq: 880, startMs: 85, ms: 120, peak: 0.25 },
-    ]),
-  );
+  play(receive());
 }
 
 /** A message went out: one short, quieter tone. Confirmation, not an alert. */
+function sent(): HTMLAudioElement {
+  return player(sentEl, [{ freq: 520, startMs: 0, ms: 70, peak: 0.15 }]);
+}
+
 export function playSent(): void {
-  play(player(sentEl, [{ freq: 520, startMs: 0, ms: 70, peak: 0.15 }]));
+  play(sent());
 }
