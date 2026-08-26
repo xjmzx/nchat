@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.1.0-beta.2
 
 - **A failed tone unlock is no longer permanent.** The gesture listeners now
   stay attached until an unlock actually succeeds, instead of being dropped on
