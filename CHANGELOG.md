@@ -11,12 +11,22 @@
   message the other party has ever sent; a total sits in the footer. Read state
   is keyed by identity because the same peer under a different key is a
   different conversation.
-- **Tones on send and receive**, mutable from the header. Synthesised with
-  WebAudio rather than shipped as audio files — no binary assets, and the
-  `default-src 'self'` CSP needs no `media-src` exception for a sound generated
-  in the page. The first sync after launch is deliberately silent: it would
-  otherwise announce the entire backlog. The send tone fires only once at least
-  one relay has confirmed, so it means "it went", not "you pressed the button".
+- **Tones on send and receive**, mutable from the header. Still synthesised
+  rather than shipped as audio files — a WAV is assembled in memory at first
+  use — but played through an **HTMLMediaElement**, not Web Audio, which is
+  broken on WebKit2GTK: the audio thread emits frames that never reach the
+  sound card, silently. `nsmpl` and `ntree` both hit it and both landed here,
+  and SUITE.md records it as a suite convention. The CSP gains `media-src
+  'self' blob:` and nothing else. The first sync after launch is deliberately
+  silent: it would otherwise announce the entire backlog. The send tone fires
+  only once at least one relay has confirmed, so it means "it went", not "you
+  pressed the button".
+- **Releases build for macOS too.** `release.yml` gains an arm64 macOS job
+  producing a `.dmg` alongside the existing Linux `.deb`/`.AppImage`, both
+  publishing to the same tag. Two jobs because a Tauri app cannot be
+  cross-compiled between the two — each needs its own platform's WebKit. Still
+  unsigned, so Gatekeeper refuses the first launch until the app is opened from
+  the context menu.
 - **Copy your npub from the identity picker.** It is the one thing you must
   hand a correspondent before anything works, and the selector shows only a
   truncation — reading it previously meant opening `nchat.json`. Public key
