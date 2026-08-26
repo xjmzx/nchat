@@ -44,6 +44,24 @@ body,
   height: 100%;
 }
 
+/* Native form controls are drawn by the platform, not by us, and the dropdown
+   list a <select> opens is a native popup that Tailwind classes on the
+   <select> itself never reach. On Linux/WebKitGTK that popup takes the GTK
+   theme: under a light system theme the identity keys rendered near-white on
+   near-white and were unreadable, while macOS happened to pick dark.
+   `color-scheme` is the supported way to tell the engine this page is dark, so
+   platform-drawn chrome matches; the explicit <option> colours are the belt to
+   that braces, for builds that ignore it. */
+:root {
+  color-scheme: dark;
+}
+
+select,
+option {
+  background-color: rgb(var(--c-panel));
+  color: rgb(var(--c-fg));
+}
+
 body {
   @apply bg-bg text-fg font-sans antialiased;
   font-synthesis: none;

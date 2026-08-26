@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- **Messages arrive without pressing Sync.** The inbox is fetched once as soon
+  as an identity is available, and then on a timer — 30s / 1m / 5m, or manual
+  only, cycled from the header and remembered. A background tick will not stack
+  a second fetch on one already in flight.
+- **Unread means unread.** The per-contact badge counts messages that arrived
+  since you last had that conversation open, per identity, rather than every
+  message the other party has ever sent; a total sits in the footer. Read state
+  is keyed by identity because the same peer under a different key is a
+  different conversation.
+- **Tones on send and receive**, mutable from the header. Synthesised with
+  WebAudio rather than shipped as audio files — no binary assets, and the
+  `default-src 'self'` CSP needs no `media-src` exception for a sound generated
+  in the page. The first sync after launch is deliberately silent: it would
+  otherwise announce the entire backlog. The send tone fires only once at least
+  one relay has confirmed, so it means "it went", not "you pressed the button".
+- **Copy your npub from the identity picker.** It is the one thing you must
+  hand a correspondent before anything works, and the selector shows only a
+  truncation — reading it previously meant opening `nchat.json`. Public key
+  only; the no-secrets-in-the-webview boundary is unchanged.
+- **Readable identity list on Linux.** The popup a `<select>` opens is drawn by
+  the platform and never sees the classes on the element, so under a light GTK
+  theme the keys rendered near-white on near-white. `color-scheme: dark` tells
+  the engine what the page is; explicit `<option>` colours cover builds that
+  ignore it.
+
 - **macOS install path.** `./install.sh` (or `npm run install:app`) builds the
   `.app` bundle and installs it to `/Applications`, quitting and relaunching a
   running copy. `make install` is the Linux layout — a bare binary plus a

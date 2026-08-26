@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyRound, Plus, Trash2, X } from "lucide-react";
+import { Check, Copy, KeyRound, Plus, Trash2, X } from "lucide-react";
 import { cn } from "../lib/cn";
 import { shortKey, type Identity } from "../lib/tauri";
 
@@ -24,6 +24,26 @@ export function IdentityPicker({
   const [nsec, setNsec] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const active = identities.find((i) => i.id === activeId) ?? null;
+
+  // The npub is the one thing you have to hand to a correspondent before
+  // anything works, and it is otherwise only in nchat.json — the selector
+  // shows a truncation. Public key only; no secret is reachable from here.
+  const copyNpub = async () => {
+    if (!active) return;
+    try {
+      await navigator.clipboard.writeText(active.npub);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard access can be refused outright. Falling back to a prompt
+      // still lets the key be selected and copied by hand, which is the
+      // whole point of the button.
+      prompt("Your npub:", active.npub);
+    }
+  };
 
   const submit = async () => {
     setBusy(true);
@@ -55,6 +75,20 @@ export function IdentityPicker({
           </option>
         ))}
       </select>
+
+      {active && (
+        <button
+          onClick={() => void copyNpub()}
+          title={`Copy ${active.npub}`}
+          className="p-1.5 rounded-md text-muted hover:text-fg hover:bg-fg/5 transition-colors"
+        >
+          {copied ? (
+            <Check size={15} className="text-ok" />
+          ) : (
+            <Copy size={15} />
+          )}
+        </button>
+      )}
 
       {activeId && identities.length > 0 && (
         <button
