@@ -6,7 +6,7 @@ ICONDIR ?= $(PREFIX)/share/icons/hicolor/scalable/apps
 DESKTOP_OUT := $(APPDIR)/nchat.desktop
 TAURI_BIN   := src-tauri/target/release/nchat
 
-.PHONY: help deps dev build install uninstall check test clean icons version
+.PHONY: help deps dev build install uninstall check test clean icons version install-guard
 
 help:
 	@echo "Targets:"
@@ -58,12 +58,17 @@ test:
 # identifier, which the Keychain uses to decide who may read an entry. Since
 # every secret this app holds lives in that store, a bundle-less install is not
 # a lesser install, it is a different app to the OS. Use ./install.sh there.
-install: $(TAURI_BIN)
+# Guard, not part of the recipe: as a prerequisite this runs BEFORE
+# $(TAURI_BIN), so macOS is turned away immediately instead of after paying for
+# a full release build it is not going to install.
+install-guard:
 	@if [ "$$(uname)" = "Darwin" ]; then \
 		echo "'make install' is the Linux layout (bare binary + .desktop)."; \
 		echo "On macOS run ./install.sh — it builds a .app and installs it to /Applications."; \
 		exit 1; \
 	fi
+
+install: install-guard $(TAURI_BIN)
 	install -d $(BINDIR) $(APPDIR) $(ICONDIR)
 	install -m 0755 $(TAURI_BIN) $(BINDIR)/nchat
 	install -m 0644 icon.svg $(ICONDIR)/nchat.svg
