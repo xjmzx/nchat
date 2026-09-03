@@ -1,6 +1,6 @@
 [package]
 name = "nchat"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 description = "Private multi-identity Nostr messenger for the ndisc suite"
 authors = ["xjmzx"]
 edition = "2021"

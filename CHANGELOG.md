@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.1.0-beta.3
 
 - **The release workflow now builds a Windows x86_64 NSIS installer**
   (`nchat_<version>_x64-setup.exe`) alongside the Linux `.deb`/`.AppImage` and
