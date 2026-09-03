@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+- **The release workflow now builds a Windows x86_64 NSIS installer**
+  (`nchat_<version>_x64-setup.exe`) alongside the Linux `.deb`/`.AppImage` and
+  the macOS `.dmg`. The job is ndisc's, unchanged; like the macOS one it runs
+  after the Linux job and only appends its asset, so the Linux job stays the
+  single owner of the release name and notes.
+- On Windows, secret keys go to **Credential Manager**. nchat takes `keyring`
+  with default features, whose `v1` feature selects the native store per
+  platform, so no per-target dependency block is needed here — unlike ndisc,
+  ntree and nsmpl, which pin `default-features = false` and therefore have to
+  name `windows-native` explicitly or silently fall back to an in-memory mock.
+- Unsigned, like the rest of the suite. SmartScreen warns on first run of a new
+  version until the download earns reputation; "More info" then "Run anyway".
+- **The installer has not been launched yet.** nchat compiles clean on Windows —
+  verified with `cargo check` against a real Windows toolchain — and the bundle
+  is known to build. Whether it runs there is untested at the time of this
+  release.
+- Added `.gitattributes` (`* text=auto eol=lf`), which the rest of the suite
+  already carried.
+
 ## v0.1.0-beta.2
 
 - **A failed tone unlock is no longer permanent.** The gesture listeners now
