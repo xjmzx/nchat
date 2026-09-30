@@ -2,8 +2,7 @@ name: Release
 
 # Fires on any pushed tag starting with `v` (e.g. v0.1.0, v0.2.0-beta) and
 # can also be kicked off manually via the Actions tab. Produces a GitHub
-# Release with .deb and .AppImage assets for Linux x86_64 and a .dmg for
-# macOS arm64.
+# Release with a .deb for Linux x86_64 and a .dmg for macOS arm64.
 #
 # Two jobs rather than one because a Tauri app cannot be cross-compiled
 # between them: the Linux build needs WebKit2GTK and the macOS build needs
@@ -78,10 +77,12 @@ jobs:
       - name: Install npm deps
         run: npm ci
 
-      # Skip rpm — rpmbuild isn't installed on ubuntu runners and Fedora
-      # users can install from source if they need it.
-      - name: Build Tauri bundles (.deb + AppImage)
-        run: npm run tauri build -- --bundles deb,appimage
+      # .deb only. No rpm (rpmbuild isn't on ubuntu runners) and no AppImage:
+      # it bundled its own webkit2gtk (~80 MB against the .deb's ~6 MB) for
+      # non-Debian distros nobody here runs. Other distros can build from
+      # source.
+      - name: Build Tauri bundle (.deb)
+        run: npm run tauri build -- --bundles deb
 
       - name: Determine tag
         id: tag
@@ -104,7 +105,6 @@ jobs:
           prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
           generate_release_notes: true
           files: |
-            src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/deb/*.deb
 
   build-macos-arm64:
