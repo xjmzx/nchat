@@ -95,8 +95,10 @@ or similar) running; nchat surfaces a banner when it cannot reach one.
 
 ## Status
 
-v0.1.0-beta.1 — first cut. Identities, whitelist, NIP-17 send/receive with
-legacy NIP-04 read, relay health, per-relay delivery confirmation.
+v0.2.0 — the first release off the beta train, for Linux, macOS and Windows.
+Identities, whitelist, NIP-17 send/receive with legacy NIP-04 read, relay
+health, per-relay delivery confirmation. The Windows installer is built by the
+release workflow; see the CHANGELOG for how far it has been tried.
 
 Not yet: background sync (messages arrive on **Sync**, not push), NIP-46
 remote signers, contact petname publishing, message search.
