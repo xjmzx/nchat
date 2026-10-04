@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- **Windows is confirmed to run, and to carry a conversation.** The v0.2.0
+  installer (`nchat_0.2.0_x64-setup.exe`, from the release) was installed and
+  launched on Windows 11 on 2026-10-04, which closes the "has not been launched
+  yet" note under v0.1.0-beta.3. That entry is left as it shipped.
+- What was tried, by hand, against a macOS install: an identity was created on
+  Windows, each side whitelisted the other, a NIP-17 message was sent from
+  Windows and arrived on the Mac on **Sync**, a reply came back the same way,
+  and each send reported its per-relay delivery confirmation. The Windows side
+  used damus, nos.lol and primal; the Mac the same three plus offchain.pub.
+- The secret key survives a restart: after quitting and relaunching, the
+  identity was still there, so the **Credential Manager** round trip works with
+  `keyring`'s default features, as the beta.3 entry expected.
+- Not tried on Windows: legacy NIP-04 read, more than one identity, and the
+  relay diagnostics beyond the delivery confirmations above.
+
 ## v0.1.0-beta.3
 
 - **The release workflow now builds a Windows x86_64 NSIS installer**
